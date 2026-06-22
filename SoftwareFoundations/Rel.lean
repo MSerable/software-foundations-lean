@@ -6,7 +6,7 @@
 def Relation (X : Type) := X → X → Prop
 
 #print Nat.le -- protected inductive Nat.le : Nat → Nat → Prop
-#check (Nat.le : Nat → Nat → Prop)-- Nat.le : Nat → Nat → Prop
+#check (Nat.le : Nat → Nat → Prop) -- Nat.le : Nat → Nat → Prop
 #check (Nat.le : Relation Nat) -- Nat.le : Relation Nat
 
 -- # Basic Properties
