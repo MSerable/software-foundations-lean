@@ -18,10 +18,18 @@ inductive NextNat : Nat → Nat → Prop where
   | nn (n : Nat) : NextNat n (Nat.succ n)
 
 theorem next_nat_partial_function : PartialFunction NextNat := by
-  sorry
+  intro x y1 y2 h1 h2
+  cases h1
+  cases h2
+  rfl
 
 theorem le_not_a_partial_function : ¬(PartialFunction Nat.le) := by
-  sorry
+  intro Hc
+  have Nonsense : 0 = 1 := by
+    apply Hc 0 0 1
+    · exact Nat.le.refl
+    · exact Nat.le.step Nat.le.refl
+  contradiction
 
 -- ### Exercise: 2 stars, standard, optional (total_relation_not_partial_function)
 inductive TotalRelation : Nat → Nat → Prop where
@@ -43,15 +51,29 @@ theorem empty_relation_partial_function : PartialFunction EmptyRelation := by
 def Reflexive {X : Type} (R : Relation X) :=
   ∀ a : X, R a a
 
-theorem le_reflexive : Reflexive Nat.le := by sorry
+theorem le_reflexive : Reflexive Nat.le := by
+  intro n
+  apply Nat.le_refl
 
 -- ## Transitive Relations
 def Transitive {X : Type} (R : Relation X) :=
   ∀ a b c : X, R a b → R b c → R a c
 
-theorem le_trans : Transitive Nat.le := by sorry
+theorem le_trans : Transitive Nat.le := by
+  intro n m o Hnm Hmo
+  induction Hmo with
+  | refl =>
+    exact Hnm
+  | step _ IHHmo =>
+    apply Nat.le_succ_of_le
+    exact IHHmo
 
-theorem lt_trans : Transitive Nat.lt := by sorry
+theorem lt_trans : Transitive Nat.lt := by
+  intro n m o Hnm Hmo
+  have Hnm := Nat.le_succ_of_le Hnm
+  apply le_trans (b := m.succ)
+  · exact Hnm
+  · exact Hmo
 
 -- ### Exercise: 2 stars, standard, optional (le_trans_hard_way)
 theorem lt_trans' : Transitive Nat.lt := by
@@ -66,7 +88,10 @@ theorem lt_trans'' : Transitive Nat.lt := by
   /- FILL IN HERE -/
   sorry
 
-theorem le_Sn_le : ∀ n m, Nat.succ n ≤ m → n ≤ m := by sorry
+theorem le_Sn_le : ∀ n m, Nat.succ n ≤ m → n ≤ m := by
+  intro n m h
+  refine Nat.le_trans ?_ h
+  exact Nat.le.step Nat.le.refl
 
 -- ### Exercise: 1 star, standard, optional (le_S_n)
 theorem le_S_n : ∀ n m, Nat.succ n ≤ Nat.succ m → n ≤ m := by
@@ -109,6 +134,7 @@ theorem le_step : ∀ n m p, n < m → m ≤ Nat.succ p → n ≤ p := by
   sorry
 
 -- ## Equivalence Relations
+-- Equivalence is placed in the Rel namespace to avoid a collision with Lean's built-in `Init.Core.Equivalence`.
 namespace Rel
 
 def Equivalence {X : Type} (R : Relation X) :=
@@ -123,21 +149,48 @@ def Order {X : Type} (R : Relation X) :=
 def Preorder {X : Type} (R : Relation X) :=
   Reflexive R ∧ Transitive R
 
-theorem le_order : Order Nat.le := by sorry
-
+theorem le_order : Order Nat.le := by
+  constructor
+  · exact Nat.le_refl
+  · constructor
+    · exact fun _ _ => Nat.le_antisymm
+    · exact fun _ _ _ => Nat.le_trans
+  
 -- # Reflexive, Transitive Closure
 inductive ClosReflTrans {X : Type} (R : Relation X) : Relation X where
   | rt_step {x y : X} (H : R x y) : ClosReflTrans R x y
   | rt_refl (x : X) : ClosReflTrans R x x
   | rt_trans {x y z : X} (Hxy : ClosReflTrans R x y) (Hyz : ClosReflTrans R y z) : ClosReflTrans R x z
 
-theorem next_nat_closure_is_le : ∀ n m, n ≤ m ↔ ClosReflTrans NextNat n m := by sorry
+theorem next_nat_closure_is_le : ∀ n m, n ≤ m ↔ ClosReflTrans NextNat n m := by
+  intro n m
+  apply Iff.intro
+  · intro H
+    induction H with
+    | refl => apply ClosReflTrans.rt_refl
+    | step _ ih =>
+      apply ClosReflTrans.rt_trans ih
+      apply ClosReflTrans.rt_step
+      constructor
+  · intro H
+    induction H with
+    | rt_step H =>
+      cases H
+      apply Nat.le.step
+      apply Nat.le.refl
+    | rt_refl =>
+      apply Nat.le.refl
+    | rt_trans _ _ ih1 ih2 =>
+      exact Nat.le_trans ih1 ih2
 
 inductive ClosReflTrans1n {X : Type} (R : Relation X) : X → X → Prop where
-  | rt1n_refl (x : X) : ClosReflTrans1n R x x
-  | rt1n_trans {x y z : X} (Hxy : R x y) (Hrest : ClosReflTrans1n R y z) : ClosReflTrans1n R x z
+  | rt1n_refl : ClosReflTrans1n R x x
+  | rt1n_trans {y z : X} (Hxy : R x y) (Hrest : ClosReflTrans1n R y z) : ClosReflTrans1n R x z
 
-theorem rsc_R : ∀ (X : Type) (R : Relation X) (x y : X), R x y → ClosReflTrans1n R x y := by sorry
+theorem rsc_R : ∀ (X : Type) (R : Relation X) (x y : X), R x y → ClosReflTrans1n R x y := by
+  intro X R x y H
+  apply ClosReflTrans1n.rt1n_trans H
+  apply ClosReflTrans1n.rt1n_refl
 
 -- ### Exercise: 2 stars, standard, optional (rsc_trans)
 theorem rsc_trans : ∀ (X : Type) (R : Relation X) (x y z : X),
